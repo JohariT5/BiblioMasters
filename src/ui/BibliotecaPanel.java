@@ -4,12 +4,16 @@ import service.AuthService;
 import service.ThemeService;
 import dao.LibroDAO;
 import dao.PrestamoDAO;
+import dao.UsuarioDAO;
 import model.Libro;
 import model.Prestamo;
+import model.Usuario;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.ArrayList;
 
 public class BibliotecaPanel extends JFrame {
     private JTable tablaPrestamosActivos;
@@ -23,7 +27,6 @@ public class BibliotecaPanel extends JFrame {
         setSize(1200, 800);
         setLocationRelativeTo(null);
         
-        // Verificar permisos
         if (!AuthService.estaLogueado() || !AuthService.esBibliotecario()) {
             JOptionPane.showMessageDialog(this, "Acceso denegado", "Error", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
@@ -34,22 +37,18 @@ public class BibliotecaPanel extends JFrame {
     }
     
     private void initComponents() {
-        // Panel principal con BorderLayout
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(Color.WHITE);
         
-        // Header moderno similar a las fotos
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(ThemeService.COLOR_PRIMARIO);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 30, 15, 30));
         headerPanel.setPreferredSize(new Dimension(1200, 80));
         
-        // Título a la izquierda
         JLabel lblTitulo = new JLabel("BiblioMasters");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitulo.setForeground(Color.WHITE);
         
-        // Panel de usuario a la derecha
         JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         userPanel.setBackground(ThemeService.COLOR_PRIMARIO);
         
@@ -67,7 +66,6 @@ public class BibliotecaPanel extends JFrame {
         headerPanel.add(lblTitulo, BorderLayout.WEST);
         headerPanel.add(userPanel, BorderLayout.EAST);
         
-        // Panel de navegación lateral (como en las fotos)
         JPanel navPanel = new JPanel();
         navPanel.setLayout(new BoxLayout(navPanel, BoxLayout.Y_AXIS));
         navPanel.setBackground(Color.WHITE);
@@ -77,34 +75,28 @@ public class BibliotecaPanel extends JFrame {
         ));
         navPanel.setPreferredSize(new Dimension(200, 0));
         
-        // Botones de navegación
-        String[] opcionesNav = {"Préstamos", "Nuevo Préstamo", "Devoluciones", "Inventario", "Salir"};
+        String[] opcionesNav = {"Prestamos", "Nuevo Prestamo", "Devoluciones", "Inventario", "Salir"};
         for (String opcion : opcionesNav) {
             JButton btnNav = crearBotonNavegacion(opcion);
             navPanel.add(btnNav);
             navPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         }
         
-        // Panel de contenido principal - PRÉSTAMOS ACTIVOS (página inicial)
         JPanel contentPanel = crearPanelPrestamosActivos();
         
-        // Panel principal con split pane
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, navPanel, contentPanel);
         splitPane.setDividerLocation(200);
         splitPane.setDividerSize(2);
         splitPane.setEnabled(false);
         
-        // Agregar todo al panel principal
         mainPanel.add(headerPanel, BorderLayout.NORTH);
         mainPanel.add(splitPane, BorderLayout.CENTER);
         
         add(mainPanel);
         
-        // Configurar acciones
         btnLogout.addActionListener(e -> logout());
         btnCambiarUsuario.addActionListener(e -> cambiarUsuario());
         
-        // Configurar navegación
         configurarNavegacion(navPanel, splitPane);
     }
     
@@ -116,10 +108,10 @@ public class BibliotecaPanel extends JFrame {
                 btn.addActionListener(e -> {
                     String texto = btn.getText();
                     switch (texto) {
-                        case "Préstamos":
+                        case "Prestamos":
                             splitPane.setRightComponent(crearPanelPrestamosActivos());
                             break;
-                        case "Nuevo Préstamo":
+                        case "Nuevo Prestamo":
                             splitPane.setRightComponent(crearPanelNuevoPrestamo());
                             break;
                         case "Devoluciones":
@@ -127,6 +119,7 @@ public class BibliotecaPanel extends JFrame {
                             break;
                         case "Inventario":
                             splitPane.setRightComponent(crearPanelLibrosDisponibles());
+                            cargarLibrosDisponibles();
                             break;
                         case "Salir":
                             logout();
@@ -164,7 +157,6 @@ public class BibliotecaPanel extends JFrame {
         boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         boton.setMaximumSize(new Dimension(200, 45));
         
-        // Efecto hover - azul claro al pasar el mouse
         boton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 boton.setBackground(new Color(220, 240, 255));
@@ -188,20 +180,16 @@ public class BibliotecaPanel extends JFrame {
         return boton;
     }
     
-    // PANELES MODERNIZADOS
-    
     private JPanel crearPanelPrestamosActivos() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
-        // Título de sección
-        JLabel lblSeccionTitulo = new JLabel("Préstamos Activos");
+        JLabel lblSeccionTitulo = new JLabel("Prestamos Activos");
         lblSeccionTitulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblSeccionTitulo.setForeground(ThemeService.COLOR_OSCURO);
         lblSeccionTitulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
         
-        // Panel de búsqueda
         JPanel searchPanel = new JPanel(new BorderLayout(10, 0));
         searchPanel.setBackground(Color.WHITE);
         searchPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
@@ -224,7 +212,6 @@ public class BibliotecaPanel extends JFrame {
         searchPanel.add(txtBusqueda, BorderLayout.CENTER);
         searchPanel.add(btnBuscar, BorderLayout.EAST);
         
-        // Panel de acciones
         JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         actionsPanel.setBackground(Color.WHITE);
         actionsPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
@@ -235,8 +222,7 @@ public class BibliotecaPanel extends JFrame {
         actionsPanel.add(btnActualizar);
         actionsPanel.add(btnVerDetalles);
         
-        // Tabla de préstamos activos modernizada
-        String[] columnas = {"ID", "Libro", "Usuario", "Fecha Préstamo", "Fecha Devolución", "Días Restantes", "Estado"};
+        String[] columnas = {"ID", "Libro", "Usuario", "Fecha Prestamo", "Fecha Devolucion", "Dias Restantes", "Estado"};
         modeloPrestamosActivos = new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -255,7 +241,6 @@ public class BibliotecaPanel extends JFrame {
         scrollPane.setBorder(BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1));
         scrollPane.getViewport().setBackground(Color.WHITE);
         
-        // Agregar componentes al panel
         JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.add(searchPanel, BorderLayout.NORTH);
         centerPanel.add(scrollPane, BorderLayout.CENTER);
@@ -264,9 +249,11 @@ public class BibliotecaPanel extends JFrame {
         panel.add(lblSeccionTitulo, BorderLayout.NORTH);
         panel.add(centerPanel, BorderLayout.CENTER);
         
-        // Configurar acciones
         btnActualizar.addActionListener(e -> cargarPrestamosActivos());
         btnVerDetalles.addActionListener(e -> verDetallesPrestamo());
+        btnBuscar.addActionListener(e -> {
+            buscarPrestamos(txtBusqueda.getText().trim());
+        });
         
         return panel;
     }
@@ -277,85 +264,84 @@ public class BibliotecaPanel extends JFrame {
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
         
-        // Título
-        JLabel lblTitulo = new JLabel("Registrar Nuevo Préstamo");
+        JLabel lblTitulo = new JLabel("Registrar Nuevo Prestamo");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblTitulo.setForeground(ThemeService.COLOR_OSCURO);
         lblTitulo.setAlignmentX(Component.CENTER_ALIGNMENT);
         lblTitulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
         
-        // Panel de búsqueda de libro
         JPanel libroPanel = new JPanel(new BorderLayout(10, 5));
         libroPanel.setBackground(Color.WHITE);
         libroPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
         
-        JLabel lblLibro = new JLabel("Buscar Libro (ISBN, Título o QR):");
+        JLabel lblLibro = new JLabel("ID del Libro:");
         lblLibro.setFont(ThemeService.fuenteSubtitulo());
         lblLibro.setForeground(ThemeService.COLOR_OSCURO);
         
-        JTextField txtBuscarLibro = new JTextField();
-        txtBuscarLibro.setFont(ThemeService.fuenteNormal());
-        txtBuscarLibro.setBorder(BorderFactory.createCompoundBorder(
+        JTextField txtIdLibro = new JTextField();
+        txtIdLibro.setFont(ThemeService.fuenteNormal());
+        txtIdLibro.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1),
             BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));
         
         libroPanel.add(lblLibro, BorderLayout.NORTH);
-        libroPanel.add(txtBuscarLibro, BorderLayout.CENTER);
+        libroPanel.add(txtIdLibro, BorderLayout.CENTER);
         
-        // Panel de búsqueda de usuario
         JPanel usuarioPanel = new JPanel(new BorderLayout(10, 5));
         usuarioPanel.setBackground(Color.WHITE);
         usuarioPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
         
-        JLabel lblUsuario = new JLabel("Buscar Usuario (ID, Nombre o QR):");
+        JLabel lblUsuario = new JLabel("ID del Usuario:");
         lblUsuario.setFont(ThemeService.fuenteSubtitulo());
         lblUsuario.setForeground(ThemeService.COLOR_OSCURO);
         
-        JTextField txtBuscarUsuario = new JTextField();
-        txtBuscarUsuario.setFont(ThemeService.fuenteNormal());
-        txtBuscarUsuario.setBorder(BorderFactory.createCompoundBorder(
+        JTextField txtIdUsuario = new JTextField();
+        txtIdUsuario.setFont(ThemeService.fuenteNormal());
+        txtIdUsuario.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1),
             BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));
         
         usuarioPanel.add(lblUsuario, BorderLayout.NORTH);
-        usuarioPanel.add(txtBuscarUsuario, BorderLayout.CENTER);
+        usuarioPanel.add(txtIdUsuario, BorderLayout.CENTER);
         
-        // Panel de fechas
         JPanel fechaPanel = new JPanel(new GridLayout(2, 2, 10, 10));
         fechaPanel.setBackground(Color.WHITE);
         fechaPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
         
-        JLabel lblFechaPrestamo = new JLabel("Fecha de Préstamo:");
+        LocalDate hoy = LocalDate.now();
+        LocalDate fechaDevolucion = hoy.plusDays(15);
+        
+        JLabel lblFechaPrestamo = new JLabel("Fecha de Prestamo:");
         lblFechaPrestamo.setFont(ThemeService.fuenteSubtitulo());
-        JTextField txtFechaPrestamo = new JTextField("2024-11-09");
+        JTextField txtFechaPrestamo = new JTextField(hoy.toString());
         txtFechaPrestamo.setFont(ThemeService.fuenteNormal());
         txtFechaPrestamo.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1),
             BorderFactory.createEmptyBorder(8, 10, 8, 10)
         ));
+        txtFechaPrestamo.setEditable(false);
         
-        JLabel lblFechaDevolucion = new JLabel("Fecha de Devolución Estimada:");
+        JLabel lblFechaDevolucion = new JLabel("Fecha de Devolucion Estimada:");
         lblFechaDevolucion.setFont(ThemeService.fuenteSubtitulo());
-        JTextField txtFechaDevolucion = new JTextField("2024-11-09");
+        JTextField txtFechaDevolucion = new JTextField(fechaDevolucion.toString());
         txtFechaDevolucion.setFont(ThemeService.fuenteNormal());
         txtFechaDevolucion.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1),
             BorderFactory.createEmptyBorder(8, 10, 8, 10)
         ));
+        txtFechaDevolucion.setEditable(false);
         
         fechaPanel.add(lblFechaPrestamo);
         fechaPanel.add(txtFechaPrestamo);
         fechaPanel.add(lblFechaDevolucion);
         fechaPanel.add(txtFechaDevolucion);
         
-        // Botón de registrar
-        JButton btnRegistrar = crearBotonAccion("Registrar Préstamo");
+        JButton btnRegistrar = crearBotonAccion("Registrar Prestamo");
         btnRegistrar.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnRegistrar.setMaximumSize(new Dimension(300, 50));
         
-        // Agregar componentes
         panel.add(lblTitulo);
         panel.add(libroPanel);
         panel.add(usuarioPanel);
@@ -363,12 +349,93 @@ public class BibliotecaPanel extends JFrame {
         panel.add(Box.createRigidArea(new Dimension(0, 20)));
         panel.add(btnRegistrar);
         
-        // Configurar acción
         btnRegistrar.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Función de registro de préstamo - Próximamente");
+            registrarPrestamo(txtIdLibro.getText().trim(), txtIdUsuario.getText().trim(), 
+                            txtFechaPrestamo.getText(), txtFechaDevolucion.getText());
         });
         
         return panel;
+    }
+    
+    private void registrarPrestamo(String idLibroStr, String idUsuarioStr, String fechaPrestamo, String fechaDevolucion) {
+        if (idLibroStr.isEmpty() || idUsuarioStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "ERROR: Por favor ingresa ID del libro y ID del usuario", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        try {
+            int idLibro = Integer.parseInt(idLibroStr);
+            int idUsuario = Integer.parseInt(idUsuarioStr);
+            
+            LibroDAO libroDAO = new LibroDAO();
+            Libro libro = libroDAO.buscarPorId(idLibro);
+            
+            if (libro == null) {
+                JOptionPane.showMessageDialog(this, "ERROR: Libro no encontrado", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (!"DISPONIBLE".equals(libro.getEstado())) {
+                JOptionPane.showMessageDialog(this, 
+                    "ERROR: El libro no esta disponible para prestamo\n" +
+                    "Estado actual: " + libro.getEstado(), 
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            UsuarioDAO usuarioDAO = new UsuarioDAO();
+            Usuario usuario = usuarioDAO.buscarPorId(idUsuario);
+            
+            if (usuario == null) {
+                JOptionPane.showMessageDialog(this, "ERROR: Usuario no encontrado", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (!usuario.esEstudiante() && !usuario.esDocente() && !usuario.esBibliotecario()) {
+                JOptionPane.showMessageDialog(this, 
+                    "ERROR: Este tipo de usuario no puede solicitar prestamos\n" +
+                    "Tipo: " + usuario.getTipoUsuario(), 
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            Prestamo nuevoPrestamo = new Prestamo();
+            nuevoPrestamo.setIdUsuario(idUsuario);
+            nuevoPrestamo.setIdLibro(idLibro);
+            nuevoPrestamo.setFechaPrestamo(fechaPrestamo);
+            nuevoPrestamo.setFechaDevolucionEstimada(fechaDevolucion);
+            nuevoPrestamo.setEstado("ACTIVO");
+            
+            PrestamoDAO prestamoDAO = new PrestamoDAO();
+            
+            if (prestamoDAO.crearPrestamo(nuevoPrestamo)) {
+                JOptionPane.showMessageDialog(this, 
+                    "EXITO: Prestamo registrado exitosamente!\n\n" +
+                    "Libro: " + libro.getTitulo() + "\n" +
+                    "Usuario: " + usuario.getNombre() + "\n" +
+                    "Fecha Devolucion: " + fechaDevolucion + "\n" +
+                    "Tipo Usuario: " + usuario.getTipoUsuario(),
+                    "Prestamo Exitoso", 
+                    JOptionPane.INFORMATION_MESSAGE);
+                
+                cargarPrestamosActivos();
+                
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "ERROR: Error al registrar el prestamo\n" +
+                    "Posible causa: El libro ya no esta disponible", 
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            }
+            
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, 
+                "ERROR: Los IDs deben ser numeros validos", 
+                "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, 
+                "ERROR: Error inesperado: " + ex.getMessage(), 
+                "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
     
     private JPanel crearPanelDevoluciones() {
@@ -376,33 +443,42 @@ public class BibliotecaPanel extends JFrame {
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
         
-        // Título
         JLabel lblTitulo = new JLabel("Devoluciones");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblTitulo.setForeground(ThemeService.COLOR_OSCURO);
         lblTitulo.setHorizontalAlignment(SwingConstants.CENTER);
         lblTitulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
         
-        // Panel de escaneo
         JPanel scanPanel = new JPanel(new BorderLayout(10, 5));
         scanPanel.setBackground(Color.WHITE);
         scanPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
         
-        JLabel lblScan = new JLabel("Escanear o ingresar código/ISBN del libro:");
+        JLabel lblScan = new JLabel("Ingresar ID del prestamo:");
         lblScan.setFont(ThemeService.fuenteSubtitulo());
         lblScan.setForeground(ThemeService.COLOR_OSCURO);
         
-        JTextField txtCodigo = new JTextField();
-        txtCodigo.setFont(ThemeService.fuenteNormal());
-        txtCodigo.setBorder(BorderFactory.createCompoundBorder(
+        JTextField txtIdPrestamo = new JTextField();
+        txtIdPrestamo.setFont(ThemeService.fuenteNormal());
+        txtIdPrestamo.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1),
             BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));
         
-        scanPanel.add(lblScan, BorderLayout.NORTH);
-        scanPanel.add(txtCodigo, BorderLayout.CENTER);
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.setFont(ThemeService.fuenteNormal());
+        btnBuscar.setBackground(ThemeService.COLOR_PRIMARIO);
+        btnBuscar.setForeground(Color.WHITE);
+        btnBuscar.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        btnBuscar.setFocusPainted(false);
         
-        // Panel de detalles del préstamo (simulado)
+        JPanel inputPanel = new JPanel(new BorderLayout(10, 0));
+        inputPanel.setBackground(Color.WHITE);
+        inputPanel.add(txtIdPrestamo, BorderLayout.CENTER);
+        inputPanel.add(btnBuscar, BorderLayout.EAST);
+        
+        scanPanel.add(lblScan, BorderLayout.NORTH);
+        scanPanel.add(inputPanel, BorderLayout.CENTER);
+        
         JPanel detallesPanel = new JPanel();
         detallesPanel.setLayout(new BoxLayout(detallesPanel, BoxLayout.Y_AXIS));
         detallesPanel.setBackground(new Color(240, 245, 250));
@@ -410,42 +486,35 @@ public class BibliotecaPanel extends JFrame {
             BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1),
             BorderFactory.createEmptyBorder(20, 20, 20, 20)
         ));
+        detallesPanel.setVisible(false);
         
-        JLabel lblDetalles = new JLabel("Detalles del Préstamo");
+        JLabel lblDetalles = new JLabel("Detalles del Prestamo");
         lblDetalles.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblDetalles.setForeground(ThemeService.COLOR_OSCURO);
         
-        JLabel lblLibro = new JLabel("Título del Libro: Cien Años de Soledad");
-        JLabel lblUsuario = new JLabel("Usuario: Juan Pérez");
-        JLabel lblFechaPrestamo = new JLabel("Fecha de Préstamo: 2024-10-15");
-        JLabel lblAtraso = new JLabel("7 Días de Atraso");
-        lblAtraso.setForeground(ThemeService.COLOR_PELIGRO);
-        lblAtraso.setFont(ThemeService.fuenteSubtitulo());
-        
-        JLabel lblMulta = new JLabel("Multa Calculada: $7.00");
-        lblMulta.setFont(ThemeService.fuenteSubtitulo());
+        JLabel lblLibro = new JLabel("Libro: ");
+        JLabel lblUsuario = new JLabel("Usuario: ");
+        JLabel lblFechaPrestamo = new JLabel("Fecha Prestamo: ");
+        JLabel lblFechaDevolucion = new JLabel("Fecha Devolucion: ");
+        JLabel lblEstado = new JLabel("Estado: ");
         
         detallesPanel.add(lblDetalles);
         detallesPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         detallesPanel.add(lblLibro);
         detallesPanel.add(lblUsuario);
         detallesPanel.add(lblFechaPrestamo);
-        detallesPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        detallesPanel.add(lblAtraso);
-        detallesPanel.add(lblMulta);
+        detallesPanel.add(lblFechaDevolucion);
+        detallesPanel.add(lblEstado);
         
-        // Botones
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
         
-        JButton btnPerdonarMulta = crearBotonAccion("Perdonar Multa");
-        JButton btnConfirmar = crearBotonAccion("Confirmar Devolución");
+        JButton btnConfirmar = crearBotonAccion("Confirmar Devolucion");
+        btnConfirmar.setVisible(false);
         
-        buttonPanel.add(btnPerdonarMulta);
         buttonPanel.add(btnConfirmar);
         
-        // Agregar componentes
         panel.add(lblTitulo, BorderLayout.NORTH);
         
         JPanel centerPanel = new JPanel();
@@ -459,16 +528,91 @@ public class BibliotecaPanel extends JFrame {
         
         panel.add(centerPanel, BorderLayout.CENTER);
         
-        // Configurar acciones
-        btnConfirmar.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Devolución registrada exitosamente", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        btnBuscar.addActionListener(e -> {
+            buscarPrestamoParaDevolucion(txtIdPrestamo.getText().trim(), detallesPanel, btnConfirmar, lblLibro, lblUsuario, lblFechaPrestamo, lblFechaDevolucion, lblEstado);
         });
         
-        btnPerdonarMulta.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Multa perdonada", "Información", JOptionPane.INFORMATION_MESSAGE);
+        btnConfirmar.addActionListener(e -> {
+            confirmarDevolucion(txtIdPrestamo.getText().trim());
         });
         
         return panel;
+    }
+    
+    private void buscarPrestamoParaDevolucion(String idPrestamoStr, JPanel detallesPanel, JButton btnConfirmar,
+                                            JLabel lblLibro, JLabel lblUsuario, JLabel lblFechaPrestamo,
+                                            JLabel lblFechaDevolucion, JLabel lblEstado) {
+        if (idPrestamoStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "ERROR: Por favor ingresa un ID de prestamo", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        try {
+            int idPrestamo = Integer.parseInt(idPrestamoStr);
+            PrestamoDAO prestamoDAO = new PrestamoDAO();
+            Prestamo prestamo = prestamoDAO.buscarPorId(idPrestamo);
+            
+            if (prestamo == null) {
+                JOptionPane.showMessageDialog(this, "ERROR: Prestamo no encontrado", "Error", JOptionPane.ERROR_MESSAGE);
+                detallesPanel.setVisible(false);
+                btnConfirmar.setVisible(false);
+                return;
+            }
+            
+            if (!"ACTIVO".equals(prestamo.getEstado())) {
+                JOptionPane.showMessageDialog(this, "INFORMACION: Este prestamo ya fue devuelto", "Informacion", JOptionPane.INFORMATION_MESSAGE);
+                detallesPanel.setVisible(false);
+                btnConfirmar.setVisible(false);
+                return;
+            }
+            
+            lblLibro.setText("Libro: " + prestamo.getTituloLibro());
+            lblUsuario.setText("Usuario: " + prestamo.getNombreUsuario());
+            lblFechaPrestamo.setText("Fecha Prestamo: " + prestamo.getFechaPrestamo());
+            lblFechaDevolucion.setText("Fecha Devolucion: " + prestamo.getFechaDevolucionEstimada());
+            lblEstado.setText("Estado: " + prestamo.getEstado());
+            
+            detallesPanel.setVisible(true);
+            btnConfirmar.setVisible(true);
+            
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "ERROR: El ID debe ser un numero valido", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void confirmarDevolucion(String idPrestamoStr) {
+        try {
+            int idPrestamo = Integer.parseInt(idPrestamoStr);
+            PrestamoDAO prestamoDAO = new PrestamoDAO();
+            
+            if (prestamoDAO.registrarDevolucion(idPrestamo)) {
+                JOptionPane.showMessageDialog(this, "EXITO: Devolucion registrada exitosamente", "Exito", JOptionPane.INFORMATION_MESSAGE);
+                
+                cargarPrestamosActivos();
+                
+                // Limpiar campos
+                Component parent = getContentPane().getComponent(0);
+                if (parent instanceof JPanel) {
+                    for (Component comp : ((JPanel) parent).getComponents()) {
+                        if (comp instanceof JPanel) {
+                            Component[] subComps = ((JPanel) comp).getComponents();
+                            for (Component subComp : subComps) {
+                                if (subComp instanceof JTextField) {
+                                    ((JTextField) subComp).setText("");
+                                } else if (subComp instanceof JPanel) {
+                                    subComp.setVisible(false);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "ERROR: Error al registrar la devolucion", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+            
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "ERROR: El ID debe ser un numero valido", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
     
     private JPanel crearPanelLibrosDisponibles() {
@@ -476,16 +620,15 @@ public class BibliotecaPanel extends JFrame {
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
-        // Título de sección
-        JLabel lblSeccionTitulo = new JLabel("Inventario - Libros Disponibles");
+        JLabel lblSeccionTitulo = new JLabel("Inventario - Todos los Libros");
         lblSeccionTitulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblSeccionTitulo.setForeground(ThemeService.COLOR_OSCURO);
         lblSeccionTitulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
         
-        // Panel de búsqueda
-        JPanel searchPanel = new JPanel(new BorderLayout(10, 0));
-        searchPanel.setBackground(Color.WHITE);
-        searchPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        // Panel de busqueda y botones
+        JPanel topPanel = new JPanel(new BorderLayout(10, 0));
+        topPanel.setBackground(Color.WHITE);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
         
         JTextField txtBusqueda = new JTextField();
         txtBusqueda.setFont(ThemeService.fuenteNormal());
@@ -493,20 +636,33 @@ public class BibliotecaPanel extends JFrame {
             BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1),
             BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));
-        txtBusqueda.setText("Buscar por título, autor, ISBN o QR...");
+        txtBusqueda.setText("Buscar por titulo, autor, ISBN o QR...");
         
-        JButton btnBuscar = new JButton("🔍 Buscar");
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBackground(Color.WHITE);
+        
+        JButton btnBuscar = new JButton("Buscar");
         btnBuscar.setFont(ThemeService.fuenteNormal());
         btnBuscar.setBackground(ThemeService.COLOR_PRIMARIO);
         btnBuscar.setForeground(Color.WHITE);
         btnBuscar.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         btnBuscar.setFocusPainted(false);
         
-        searchPanel.add(txtBusqueda, BorderLayout.CENTER);
-        searchPanel.add(btnBuscar, BorderLayout.EAST);
+        JButton btnActualizar = new JButton("Actualizar");
+        btnActualizar.setFont(ThemeService.fuenteNormal());
+        btnActualizar.setBackground(ThemeService.COLOR_SECUNDARIO);
+        btnActualizar.setForeground(Color.WHITE);
+        btnActualizar.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        btnActualizar.setFocusPainted(false);
+        btnActualizar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        // Tabla de libros disponibles modernizada
-        String[] columnas = {"ID", "Título", "Autor", "Ejemplares (Total)", "Ejemplares (Disponibles)", "Estado"};
+        buttonPanel.add(btnBuscar);
+        buttonPanel.add(btnActualizar);
+        
+        topPanel.add(txtBusqueda, BorderLayout.CENTER);
+        topPanel.add(buttonPanel, BorderLayout.EAST);
+        
+        String[] columnas = {"ID", "Titulo", "Autor", "Categoria", "Editorial", "Anio", "Estado"};
         modeloLibrosDisponibles = new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -525,25 +681,27 @@ public class BibliotecaPanel extends JFrame {
         scrollPane.setBorder(BorderFactory.createLineBorder(ThemeService.COLOR_CLARO, 1));
         scrollPane.getViewport().setBackground(Color.WHITE);
         
-        // Agregar componentes al panel
         panel.add(lblSeccionTitulo, BorderLayout.NORTH);
-        panel.add(searchPanel, BorderLayout.CENTER);
+        panel.add(topPanel, BorderLayout.CENTER);
         panel.add(scrollPane, BorderLayout.SOUTH);
         
         // Configurar acciones
         btnBuscar.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Búsqueda en desarrollo", "Información", JOptionPane.INFORMATION_MESSAGE);
+            buscarLibros(txtBusqueda.getText().trim());
+        });
+        
+        btnActualizar.addActionListener(e -> {
+            cargarLibrosDisponibles();
+            JOptionPane.showMessageDialog(this, "EXITO: Inventario actualizado", "Actualizado", JOptionPane.INFORMATION_MESSAGE);
         });
         
         return panel;
     }
     
-    // MÉTODOS ORIGINALES PRESERVADOS
-    
     private void logout() {
         int confirmacion = JOptionPane.showConfirmDialog(this,
-            "¿Estás seguro de que quieres cerrar sesión?",
-            "Confirmar Cierre de Sesión",
+            "¿Estas seguro de que quieres cerrar sesion?",
+            "Confirmar Cierre de Sesion",
             JOptionPane.YES_NO_OPTION);
             
         if (confirmacion == JOptionPane.YES_OPTION) {
@@ -555,7 +713,7 @@ public class BibliotecaPanel extends JFrame {
     
     private void cambiarUsuario() {
         int confirmacion = JOptionPane.showConfirmDialog(this,
-            "¿Quieres cambiar de usuario? Se cerrará la sesión actual.",
+            "¿Quieres cambiar de usuario? Se cerrara la sesion actual.",
             "Cambiar Usuario",
             JOptionPane.YES_NO_OPTION);
             
@@ -568,7 +726,6 @@ public class BibliotecaPanel extends JFrame {
     
     private void cargarDatos() {
         cargarPrestamosActivos();
-        cargarLibrosDisponibles();
     }
     
     private void cargarPrestamosActivos() {
@@ -585,7 +742,7 @@ public class BibliotecaPanel extends JFrame {
                     prestamo.getNombreUsuario(),
                     prestamo.getFechaPrestamo(),
                     prestamo.getFechaDevolucionEstimada(),
-                    "3 Días", // Placeholder para días restantes
+                    "3 Dias",
                     prestamo.getEstado()
                 };
                 modeloPrestamosActivos.addRow(fila);
@@ -601,26 +758,199 @@ public class BibliotecaPanel extends JFrame {
             List<Libro> libros = libroDAO.obtenerTodosLibros();
             
             for (Libro libro : libros) {
-                if ("DISPONIBLE".equals(libro.getEstado())) {
-                    Object[] fila = {
-                        libro.getIdLibro(),
-                        libro.getTitulo(),
-                        libro.getAutor(),
-                        "1", // Ejemplares totales - placeholder
-                        "1", // Ejemplares disponibles - placeholder
-                        libro.getEstado()
-                    };
-                    modeloLibrosDisponibles.addRow(fila);
-                }
+                Object[] fila = {
+                    libro.getIdLibro(),
+                    libro.getTitulo(),
+                    libro.getAutor(),
+                    libro.getCategoria(),
+                    libro.getEditorial(),
+                    libro.getAnioPublicacion(),
+                    libro.getEstado()
+                };
+                modeloLibrosDisponibles.addRow(fila);
+            }
+            
+            if (libros.isEmpty()) {
+                Object[] filaPrueba = {
+                    999,
+                    "Libro de Prueba - Agrega libros en Admin",
+                    "Sistema",
+                    "General",
+                    "Sistema",
+                    2024,
+                    "DISPONIBLE"
+                };
+                modeloLibrosDisponibles.addRow(filaPrueba);
             }
         }
     }
     
     private void verDetallesPrestamo() {
         if (tablaPrestamosActivos.getSelectedRow() == -1) {
-            JOptionPane.showMessageDialog(this, "Por favor selecciona un préstamo", "Advertencia", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                "Por favor selecciona un prestamo de la tabla", 
+                "Advertencia", 
+                JOptionPane.WARNING_MESSAGE);
             return;
         }
-        JOptionPane.showMessageDialog(this, "Detalles del préstamo - Próximamente");
+        
+        try {
+            int filaSeleccionada = tablaPrestamosActivos.getSelectedRow();
+            int idPrestamo = (int) modeloPrestamosActivos.getValueAt(filaSeleccionada, 0);
+            
+            PrestamoDAO prestamoDAO = new PrestamoDAO();
+            Prestamo prestamo = prestamoDAO.buscarPorId(idPrestamo);
+            
+            if (prestamo == null) {
+                JOptionPane.showMessageDialog(this, 
+                    "No se pudo encontrar la informacion del prestamo seleccionado", 
+                    "Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            String mensaje = String.format(
+                "DETALLES DEL PRESTAMO #%d\n\n" +
+                "INFORMACION DEL LIBRO:\n" +
+                "• Titulo: %s\n" +
+                "• ID del libro: %d\n\n" +
+                "INFORMACION DEL USUARIO:\n" +
+                "• Nombre: %s\n" +
+                "• ID del usuario: %d\n\n" +
+                "FECHAS:\n" +
+                "• Fecha de prestamo: %s\n" +
+                "• Fecha de devolucion estimada: %s\n" +
+                "• Fecha de devolucion real: %s\n\n" +
+                "ESTADO ACTUAL: %s",
+                prestamo.getIdPrestamo(),
+                prestamo.getTituloLibro(),
+                prestamo.getIdLibro(),
+                prestamo.getNombreUsuario(),
+                prestamo.getIdUsuario(),
+                prestamo.getFechaPrestamo(),
+                prestamo.getFechaDevolucionEstimada(),
+                (prestamo.getFechaDevolucionReal() != null ? prestamo.getFechaDevolucionReal() : "Pendiente"),
+                prestamo.getEstado()
+            );
+            
+            JTextArea textArea = new JTextArea(mensaje);
+            textArea.setEditable(false);
+            textArea.setLineWrap(true);
+            textArea.setWrapStyleWord(true);
+            textArea.setBackground(new Color(240, 240, 240));
+            
+            JScrollPane scrollPane = new JScrollPane(textArea);
+            scrollPane.setPreferredSize(new Dimension(500, 300));
+            
+            JOptionPane.showMessageDialog(this, 
+                scrollPane, 
+                "Detalles del Prestamo #" + prestamo.getIdPrestamo(), 
+                JOptionPane.INFORMATION_MESSAGE);
+                
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error al obtener los detalles del prestamo: " + e.getMessage(), 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void buscarLibros(String textoBusqueda) {
+        if (textoBusqueda.isEmpty() || textoBusqueda.equals("Buscar por titulo, autor, ISBN o QR...")) {
+            cargarLibrosDisponibles();
+            return;
+        }
+        
+        try {
+            modeloLibrosDisponibles.setRowCount(0);
+            
+            LibroDAO libroDAO = new LibroDAO();
+            List<Libro> librosEncontrados = libroDAO.buscarLibros(textoBusqueda);
+            
+            if (librosEncontrados.isEmpty()) {
+                JOptionPane.showMessageDialog(this, 
+                    "No se encontraron libros que coincidan con: " + textoBusqueda, 
+                    "Busqueda sin resultados", 
+                    JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            
+            for (Libro libro : librosEncontrados) {
+                Object[] fila = {
+                    libro.getIdLibro(),
+                    libro.getTitulo(),
+                    libro.getAutor(),
+                    libro.getCategoria(),
+                    libro.getEditorial(),
+                    libro.getAnioPublicacion(),
+                    libro.getEstado()
+                };
+                modeloLibrosDisponibles.addRow(fila);
+            }
+            
+            JOptionPane.showMessageDialog(this, 
+                "Se encontraron " + librosEncontrados.size() + " libros que coinciden con: " + textoBusqueda, 
+                "Resultados de busqueda", 
+                JOptionPane.INFORMATION_MESSAGE);
+                
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error al realizar la busqueda: " + e.getMessage(), 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void buscarPrestamos(String textoBusqueda) {
+        if (textoBusqueda.isEmpty() || textoBusqueda.equals("Buscar por libro, usuario o fecha...")) {
+            cargarPrestamosActivos();
+            return;
+        }
+        
+        try {
+            modeloPrestamosActivos.setRowCount(0);
+            
+            PrestamoDAO prestamoDAO = new PrestamoDAO();
+            List<Prestamo> prestamos = prestamoDAO.obtenerTodosPrestamos();
+            
+            List<Prestamo> prestamosFiltrados = new ArrayList<>();
+            String textoLower = textoBusqueda.toLowerCase();
+            
+            for (Prestamo prestamo : prestamos) {
+                if (prestamo.getTituloLibro().toLowerCase().contains(textoLower) ||
+                    prestamo.getNombreUsuario().toLowerCase().contains(textoLower) ||
+                    prestamo.getFechaPrestamo().contains(textoBusqueda) ||
+                    prestamo.getFechaDevolucionEstimada().contains(textoBusqueda) ||
+                    String.valueOf(prestamo.getIdPrestamo()).contains(textoBusqueda)) {
+                    prestamosFiltrados.add(prestamo);
+                }
+            }
+            
+            for (Prestamo prestamo : prestamosFiltrados) {
+                Object[] fila = {
+                    prestamo.getIdPrestamo(),
+                    prestamo.getTituloLibro(),
+                    prestamo.getNombreUsuario(),
+                    prestamo.getFechaPrestamo(),
+                    prestamo.getFechaDevolucionEstimada(),
+                    "3 Dias",
+                    prestamo.getEstado()
+                };
+                modeloPrestamosActivos.addRow(fila);
+            }
+            
+            if (prestamosFiltrados.isEmpty()) {
+                JOptionPane.showMessageDialog(this, 
+                    "No se encontraron prestamos que coincidan con: " + textoBusqueda, 
+                    "Busqueda sin resultados", 
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+                
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error al realizar la busqueda: " + e.getMessage(), 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

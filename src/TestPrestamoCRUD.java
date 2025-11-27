@@ -64,7 +64,7 @@ public class TestPrestamoCRUD {
             fechaDevolucion
         );
         
-        boolean prestamoSolicitado = prestamoDAO.solicitarPrestamo(nuevoPrestamo);
+        boolean prestamoSolicitado = prestamoDAO.crearPrestamo(nuevoPrestamo);
         if (prestamoSolicitado) {
             System.out.println("✅ Préstamo solicitado correctamente");
         } else {

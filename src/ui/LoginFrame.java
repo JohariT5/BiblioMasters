@@ -190,7 +190,7 @@ public class LoginFrame extends JFrame {
     private void registrarUsuario() {
         // Crear un diálogo de registro modernizado
         JDialog registerDialog = new JDialog(this, "Registrar Nuevo Usuario", true);
-        registerDialog.setSize(450, 550);
+        registerDialog.setSize(500, 750); 
         registerDialog.setLocationRelativeTo(this);
         registerDialog.setResizable(false);
         
@@ -239,12 +239,19 @@ public class LoginFrame extends JFrame {
         
         JButton btnCancel = new JButton("Cancelar");
         btnCancel.setFont(ThemeService.fuenteNormal());
+        btnCancel.setBackground(new Color(220, 220, 220));
+        btnCancel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        btnCancel.setFocusPainted(false);
+        btnCancel.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCancel.addActionListener(e -> registerDialog.dispose());
         
         JButton btnRegister = new JButton("Registrar");
         btnRegister.setFont(ThemeService.fuenteNormal());
         btnRegister.setBackground(ThemeService.COLOR_PRIMARIO);
         btnRegister.setForeground(Color.WHITE);
+        btnRegister.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        btnRegister.setFocusPainted(false);
+        btnRegister.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnRegister.addActionListener(e -> {
             procesarRegistro(txtNombre.getText().trim(), txtEmail.getText().trim(),
                            new String(txtPassword.getPassword()), 
